@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代码笔记</title>
+    <!-- 引入Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- 引入MathJax用于公式渲染 -->
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    
+    <!-- 配置Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#333333',
+                        secondary: '#666666',
+                        accent: '#0066cc'
+                    },
+                    fontFamily: {
+                        consolas: ['Consolas', 'Monaco', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .editor-focus {
+                @apply focus:ring-1 focus:ring-black focus:outline-none;
+            }
+            .transition-simple {
+                transition: all 0.2s ease;
+            }
+        }
+    </style>
+</head>
+<body class="bg-white font-consolas text-gray-900 min-h-screen flex flex-col">
+    <!-- 顶部导航 -->
+    <header class="border-b border-gray-200 py-4 px-6 sm:px-10">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center">
+                <i class="fa fa-file-text-o mr-2 text-gray-700"></i>
+                <h1 class="text-xl font-bold">代码笔记</h1>
+            </div>
+            <button id="save-btn" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 transition-simple text-sm flex items-center">
+                <i class="fa fa-save mr-1"></i> 保存更新
+            </button>
+        </div>
+    </header>
+
+    <!-- 主要内容区 -->
+    <main class="flex-grow px-6 sm:px-10 py-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- 文本编辑器区域 -->
+            <div class="mb-4">
+                <label for="content-editor" class="block text-sm text-gray-600 mb-2">编辑内容 (支持Markdown和LaTeX公式，如：$$E=mc^2$$)</label>
+                <textarea 
+                    id="content-editor" 
+                    class="w-full h-64 p-4 border border-gray-300 rounded-md editor-focus font-consolas text-sm resize-y"
+                ># 算法复杂度分析
+
+在计算机科学中，算法的时间复杂度是一个函数，它定量描述了该算法的运行时间。这是一个关于代表算法输入值的字符串的长度的函数。
+
+## 常见的时间复杂度
+- **O(1)**: 常数时间
+- **O(log n)**: 对数时间
+- **O(n)**: 线性时间
+- **O(n log n)**: 线性对数时间
+- **O(n²)**: 平方时间
+
+## 公式示例
+快速排序的平均时间复杂度为：$$O(n \log n)$$
+
+斐波那契数列的递归时间复杂度为：$$T(n) = T(n-1) + T(n-2) + O(1)$$
+
+## 汉语与英语混合示例
+This is a sample of mixed English and 中文. It demonstrates that the editor supports both languages 完美地.
+
+对于排序算法，我们通常关注的是它的worst-case performance。</textarea>
+            </div>
+            
+            <!-- 预览区域 -->
+            <div>
+                <label class="block text-sm text-gray-600 mb-2">预览</label>
+                <div id="preview-container" class="border border-gray-300 rounded-md p-6 min-h-[300px] bg-gray-50">
+                    <!-- 预览内容将在这里显示 -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 底部信息 -->
+    <footer class="border-t border-gray-200 py-4 px-6 sm:px-10 text-center text-sm text-gray-500">
+        <p>使用 Consolas 字体 | 支持 Markdown 和 LaTeX 公式</p>
+    </footer>
+
+    <!-- 保存成功提示 -->
+    <div id="notification" class="fixed bottom-6 right-6 bg-gray-800 text-white px-4 py-2 rounded shadow-md opacity-0 transition-simple pointer-events-none">
+        内容已保存
+    </div>
+
+    <script>
+        // 获取DOM元素
+        const editor = document.getElementById('content-editor');
+        const preview = document.getElementById('preview-container');
+        const saveBtn = document.getElementById('save-btn');
+        const notification = document.getElementById('notification');
+        
+        // 简单的Markdown解析函数
+        function parseMarkdown(text) {
+            // 处理标题
+            let html = text.replace(/^#{1,6}\s+(.*?)$/gm, (match, content, level) => {
+                const headingLevel = match.indexOf(' ') + 1;
+                return `<h${headingLevel} class="font-bold mb-2 mt-4">${content}</h${headingLevel}>`;
+            });
+            
+            // 处理列表
+            html = html.replace(/^- (.*?)$/gm, '<li class="ml-6 mb-1">$1</li>');
+            html = html.replace(/(<li.*?>.*?<\/li>)+/gm, '<ul class="list-disc mb-4">$&</ul>');
+            
+            // 处理段落
+            html = html.replace(/^(?!<h|<ul|<li)(.*?)$/gm, (match) => {
+                return match ? `<p class="mb-3">${match}</p>` : '';
+            });
+            
+            // 处理粗体
+            html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            // 处理代码
+            html = html.replace(/`(.*?)`/g, '<code class="bg-gray-200 px-1 rounded">($1)</code>');
+            
+            return html;
+        }
+        
+        // 更新预览
+        function updatePreview() {
+            const content = editor.value;
+            preview.innerHTML = parseMarkdown(content);
+            
+            // 重新渲染数学公式
+            if (window.MathJax) {
+                MathJax.typesetPromise([preview]).catch(err => console.error('MathJax error:', err));
+            }
+        }
+        
+        // 保存内容
+        function saveContent() {
+            const content = editor.value;
+            // 在实际应用中，这里会发送到服务器保存
+            // 这里仅做本地存储演示
+            localStorage.setItem('noteContent', content);
+            
+            // 显示保存提示
+            notification.style.opacity = '1';
+            notification.style.pointerEvents = 'auto';
+            
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                notification.style.pointerEvents = 'none';
+            }, 2000);
+        }
+        
+        // 初始化
+        function init() {
+            // 从本地存储加载内容
+            const savedContent = localStorage.getItem('noteContent');
+            if (savedContent) {
+                editor.value = savedContent;
+            }
+            
+            // 初始更新预览
+            updatePreview();
+            
+            // 事件监听
+            editor.addEventListener('input', updatePreview);
+            saveBtn.addEventListener('click', saveContent);
+            
+            // 支持Ctrl+S保存
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 's') {
+                    e.preventDefault();
+                    saveContent();
+                }
+            });
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
